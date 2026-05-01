@@ -3,6 +3,7 @@ from __future__ import annotations
 import omni.ext
 import omni.kit.app
 import omni.usd
+import carb.eventdispatcher
 
 from .scene import CellScene
 from .simulation import SoftCellSimulation
@@ -15,10 +16,11 @@ class CellSimulationExtension(omni.ext.IExt):
         self._update_subscription = None
 
         self._ensure_stage()
-        self._update_subscription = (
-            omni.kit.app.get_app()
-            .get_update_event_stream()
-            .create_subscription_to_pop(self._on_update, name="ku.cell_sim.update")
+        self._update_subscription = carb.eventdispatcher.get_eventdispatcher().observe_event(
+            order=omni.kit.app.UPDATE_ORDER_PYTHON_EXEC_END_UPDATE,
+            event_name=omni.kit.app.GLOBAL_EVENT_UPDATE,
+            on_event=self._on_update,
+            observer_name="ku.cell_sim.update",
         )
 
         print("[ku.cell_sim] Soft cell simulation started")
@@ -47,7 +49,6 @@ class CellSimulationExtension(omni.ext.IExt):
             self._ensure_stage()
             return
 
-        dt = getattr(event, "payload", {}).get("dt", 1.0 / 60.0)
+        dt = event["dt"] if "dt" in event else 1.0 / 60.0
         self._simulation.step(float(dt))
         self._scene.update()
-
