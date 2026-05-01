@@ -8,7 +8,6 @@ readme = "docs/README.md"
 
 [dependencies]
 "omni.usd" = {}
-"omni.kit.viewport.utility" = {}
 
 [[python.module]]
 name = "ku.cell_sim"
@@ -16,4 +15,3 @@ name = "ku.cell_sim"
 [[test]]
 dependencies = []
 args = []
-
