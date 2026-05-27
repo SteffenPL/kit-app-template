@@ -43,9 +43,9 @@ Once the force model is understandable and stable, move the same state arrays an
 
 Likely files:
 
-- `source/exts/ku.cell_sim/config/extension.toml`
-- `source/exts/ku.cell_sim/ku/cell_sim/extension.py`
-- `source/exts/ku.cell_sim/ku/cell_sim/__init__.py`
+- `source/extensions/ku.cell_sim/config/extension.toml`
+- `source/extensions/ku.cell_sim/ku/cell_sim/extension.py`
+- `source/extensions/ku.cell_sim/ku/cell_sim/__init__.py`
 
 Behavior:
 
@@ -64,8 +64,8 @@ Tests/checks:
 
 Likely files:
 
-- `source/exts/ku.cell_sim/ku/cell_sim/simulation.py`
-- `source/exts/ku.cell_sim/ku/cell_sim/tests/test_simulation.py`
+- `source/extensions/ku.cell_sim/ku/cell_sim/simulation.py`
+- `source/extensions/ku.cell_sim/ku/cell_sim/tests/test_simulation.py`
 
 Behavior:
 
@@ -86,7 +86,7 @@ Tests/checks:
 
 Likely files:
 
-- `source/exts/ku.cell_sim/ku/cell_sim/scene.py`
+- `source/extensions/ku.cell_sim/ku/cell_sim/scene.py`
 
 Behavior:
 
@@ -104,8 +104,8 @@ Tests/checks:
 
 Likely files:
 
-- `source/exts/ku.cell_sim/ku/cell_sim/simulation.py`
-- `source/exts/ku.cell_sim/ku/cell_sim/scene.py`
+- `source/extensions/ku.cell_sim/ku/cell_sim/simulation.py`
+- `source/extensions/ku.cell_sim/ku/cell_sim/scene.py`
 
 Behavior:
 
@@ -123,7 +123,7 @@ Tests/checks:
 
 Likely files:
 
-- `source/exts/ku.cell_sim/ku/cell_sim/warp_simulation.py`
+- `source/extensions/ku.cell_sim/ku/cell_sim/warp_simulation.py`
 
 Behavior:
 

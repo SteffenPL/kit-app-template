@@ -16,7 +16,7 @@ This folder is a project-local orientation guide for the NVIDIA Omniverse, OpenU
 The current prototype should stay small and inspectable:
 
 - Use OpenUSD as the scene and asset data model.
-- Use the Kit app and extension structure already present in `source/apps/ku.demo.kit` and `source/exts/ku.cell_sim/`.
+- Use the Kit app and extension structure already present in `source/apps/ku.demo.kit` and `source/extensions/ku.cell_sim/`.
 - Use PhysX/Omni Physics for visual and mechanical smoke tests where rigid contact is useful.
 - Keep the scientific cell-motion model overdamped rather than inertia-dominated.
 - Use Python arrays first when that keeps force logic readable.
@@ -29,4 +29,3 @@ Related local context:
 - `docs/plans/soft-sphere-cell-model-plan.md`
 - `references/cell-migration-biophysics/README.md`
 - `references/cell-migration-biophysics/reading-notes.md`
-

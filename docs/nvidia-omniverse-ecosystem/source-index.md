@@ -50,4 +50,4 @@ This page lists the original sources used for the Omniverse ecosystem notes. Pre
 - `references/cell-migration-biophysics/README.md` - biological and mechanical modeling anchors.
 - `references/cell-migration-biophysics/reading-notes.md` - current local modeling summary.
 - `source/apps/ku.demo.kit` - local Kit app configuration, including PhysX and Warp extension dependencies.
-- `source/exts/ku.cell_sim/` - local cell-simulation extension.
+- `source/extensions/ku.cell_sim/` - local cell-simulation extension.
