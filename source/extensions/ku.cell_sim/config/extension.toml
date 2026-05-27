@@ -8,6 +8,8 @@ readme = "docs/README.md"
 
 [dependencies]
 "omni.usd" = {}
+"omni.kit.commands" = {}
+"omni.kit.viewport.utility" = {}
 
 [[python.module]]
 name = "ku.cell_sim"

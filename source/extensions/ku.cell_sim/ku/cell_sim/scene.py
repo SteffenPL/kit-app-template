@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pxr import Gf, Sdf, UsdGeom, Vt
+from pxr import Gf, Sdf, UsdGeom, UsdLux, Vt
 
 from .simulation import SoftCellSimulation
 
@@ -10,6 +10,7 @@ SUBSTRATE_PATH = ROOT_PATH.AppendPath("Substrate")
 CELL_PATH = ROOT_PATH.AppendPath("CellCortex")
 NUCLEUS_PATH = ROOT_PATH.AppendPath("Nucleus")
 LIGHT_PATH = ROOT_PATH.AppendPath("KeyLight")
+DISTANT_LIGHT_PATH = ROOT_PATH.AppendPath("FillLight")
 CAMERA_PATH = ROOT_PATH.AppendPath("Camera")
 
 
@@ -21,6 +22,7 @@ class CellScene:
         self._nucleus = None
 
     def create(self) -> None:
+        UsdGeom.Xform.Define(self._stage, Sdf.Path("/World"))
         UsdGeom.Xform.Define(self._stage, ROOT_PATH)
         self._create_substrate()
         self._create_cell_mesh()
@@ -68,11 +70,17 @@ class CellScene:
         self._nucleus = nucleus
 
     def _create_light(self) -> None:
-        light = UsdGeom.Sphere.Define(self._stage, LIGHT_PATH)
-        light.CreateRadiusAttr(0.05)
-        light.CreateDisplayColorAttr(Vt.Vec3fArray([Gf.Vec3f(1.0, 0.94, 0.78)]))
+        light = UsdLux.SphereLight.Define(self._stage, LIGHT_PATH)
+        light.CreateRadiusAttr(0.4)
+        light.CreateIntensityAttr(25000.0)
         xform = UsdGeom.Xformable(light)
         xform.AddTranslateOp().Set(Gf.Vec3d(-2.0, -3.0, 5.0))
+
+        fill = UsdLux.DistantLight.Define(self._stage, DISTANT_LIGHT_PATH)
+        fill.CreateIntensityAttr(650.0)
+        fill.CreateAngleAttr(0.7)
+        fill_xform = UsdGeom.Xformable(fill)
+        fill_xform.AddRotateXYZOp().Set(Gf.Vec3f(-45.0, 0.0, 35.0))
 
     def _create_camera(self) -> None:
         camera = UsdGeom.Camera.Define(self._stage, CAMERA_PATH)
@@ -82,4 +90,3 @@ class CellScene:
         xform.AddTranslateOp().Set(Gf.Vec3d(3.2, -5.0, 2.7))
         xform.AddRotateXYZOp().Set(Gf.Vec3f(62.0, 0.0, 35.0))
         self._stage.SetDefaultPrim(self._stage.GetPrimAtPath(ROOT_PATH))
-
