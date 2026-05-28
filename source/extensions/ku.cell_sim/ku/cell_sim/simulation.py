@@ -60,6 +60,12 @@ class SoftCellParameters:
     max_step: float = 1.0 / 30.0
 
 
+@dataclass(frozen=True)
+class CellCultureParameters:
+    contact_stiffness: float = 38.0
+    contact_margin: float = 0.05
+
+
 class SoftCellSimulation:
     """Small overdamped cell-shell model used before moving kernels to Warp."""
 
@@ -98,26 +104,27 @@ class SoftCellSimulation:
         self.faces = self._build_faces()
         self._configure_backend()
 
-    def step(self, dt: float) -> None:
+    def step(self, dt: float, external_force: Vec3 | None = None) -> None:
         remaining = max(0.0, dt)
+        external_force = external_force or Vec3(0.0, 0.0, 0.0)
         while remaining > 0.0:
             sub_dt = min(remaining, self.parameters.max_step)
-            self._step_once(sub_dt)
+            self._step_once(sub_dt, external_force)
             remaining -= sub_dt
 
-    def _step_once(self, dt: float) -> None:
+    def _step_once(self, dt: float, external_force: Vec3) -> None:
         if self._backend is not None:
             try:
-                self.positions = self._backend.step_once(dt)
+                self.positions = self._backend.step_once(dt, external_force)
                 return
             except Exception as exc:
                 self._backend = None
                 self.backend_name = "python"
                 self.backend_error = str(exc)
 
-        self._step_once_python(dt)
+        self._step_once_python(dt, external_force)
 
-    def _step_once_python(self, dt: float) -> None:
+    def _step_once_python(self, dt: float, external_force: Vec3) -> None:
         forces = [Vec3(0.0, 0.0, -self.parameters.gravity) for _ in self.positions]
         center = self.center
 
@@ -131,6 +138,7 @@ class SoftCellSimulation:
             forces[spring.b] -= force
 
         for index, position in enumerate(self.positions):
+            forces[index] += external_force
             target = center + self.rest_offsets[index]
             forces[index] += (target - position) * self.parameters.shape_stiffness
 
@@ -252,11 +260,21 @@ class CellInstance:
 class CellCultureSimulation:
     """Seeded multi-cell culture built from the single-cell scaffold."""
 
-    def __init__(self, count: int = 16, seed: int = 11, backend: str = "warp"):
+    def __init__(
+        self,
+        count: int = 16,
+        seed: int = 11,
+        backend: str = "warp",
+        parameters: CellCultureParameters | None = None,
+    ):
         self.count = min(max(count, 10), 20)
         self.seed = seed
         self.backend = backend
+        self.parameters = parameters or CellCultureParameters()
         self.cells: list[CellInstance] = []
+        self.backend_name = "python"
+        self.backend_error: str | None = None
+        self._backend = None
         self.reset()
 
     def reset(self) -> None:
@@ -292,15 +310,82 @@ class CellCultureSimulation:
                         params,
                         origin=origins[index],
                         migration_direction=direction,
-                        backend=self.backend,
+                        backend="python" if self.backend == "warp" else self.backend,
                     ),
                     style=palette[index % len(palette)],
                 )
             )
 
+        self._configure_backend()
+
     def step(self, dt: float) -> None:
-        for cell in self.cells:
-            cell.simulation.step(dt)
+        if self._backend is not None:
+            try:
+                cell_positions = self._backend.step(dt)
+                self._apply_backend_positions(cell_positions)
+                return
+            except Exception as exc:
+                self._backend = None
+                self.backend_name = "python"
+                self.backend_error = str(exc)
+
+        self._step_python(dt)
+
+    def _step_python(self, dt: float) -> None:
+        external_forces = self._cell_contact_forces()
+        for cell, force in zip(self.cells, external_forces):
+            cell.simulation.step(dt, external_force=force)
+
+    def _cell_contact_forces(self) -> list[Vec3]:
+        forces = [Vec3(0.0, 0.0, 0.0) for _ in self.cells]
+        for first_index in range(len(self.cells)):
+            first = self.cells[first_index].simulation
+            first_center = first.center
+            for second_index in range(first_index + 1, len(self.cells)):
+                second = self.cells[second_index].simulation
+                second_center = second.center
+                delta = first_center - second_center
+                distance = delta.length()
+                contact_distance = (
+                    first.parameters.radius + second.parameters.radius + self.parameters.contact_margin
+                )
+                penetration = contact_distance - distance
+                if penetration <= 0.0:
+                    continue
+
+                direction = delta.normalized() if distance > 1e-9 else Vec3(1.0, 0.0, 0.0)
+                force = direction * (penetration * self.parameters.contact_stiffness)
+                forces[first_index] += force
+                forces[second_index] -= force
+
+        return forces
+
+    def _configure_backend(self) -> None:
+        self._backend = None
+        self.backend_name = "python"
+        self.backend_error = None
+
+        if self.backend == "python":
+            return
+
+        if self.backend not in {"auto", "warp"}:
+            raise ValueError(f"Unknown culture simulation backend: {self.backend}")
+
+        try:
+            from .warp_backend import WarpCellCultureBackend
+
+            self._backend = WarpCellCultureBackend(self.cells, self.parameters)
+            self.backend_name = self._backend.name
+        except Exception as exc:
+            self._backend = None
+            self.backend_name = "python"
+            self.backend_error = str(exc)
+            if self.backend == "warp":
+                raise RuntimeError(f"Failed to initialize Warp culture backend: {exc}") from exc
+
+    def _apply_backend_positions(self, cell_positions: list[list[Vec3]]) -> None:
+        for cell, positions in zip(self.cells, cell_positions):
+            cell.simulation.positions = positions
 
     def _random_origins(self, rng: Random) -> list[Vec3]:
         origins: list[Vec3] = []
