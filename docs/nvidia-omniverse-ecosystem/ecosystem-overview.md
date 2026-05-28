@@ -90,14 +90,15 @@ Sources:
 
 ### NVIDIA Warp
 
-Warp is a Python framework for GPU-accelerated simulation, robotics, geometry processing, and spatial computing. In Omniverse, Warp can be used through extensions and OmniGraph nodes. For this repo, Warp is the most natural later backend for explicit force updates because cell migration maps well to particle, spring, adhesion, volume, drag, and protrusion kernels.
+Warp is a Python framework for GPU-accelerated simulation, robotics, geometry processing, and spatial computing. In Omniverse, Warp can be used through extensions and OmniGraph nodes. For this repo, Warp is now the preferred scientific backend because cell migration maps well to particle, spring, adhesion, volume, drag, protrusion, and contact kernels.
 
 Use it for:
 
 - Custom simulation kernels.
 - GPU-parallel force computation.
 - Spatial queries and mesh/particle operations.
-- A later high-performance backend once the CPU model is stable.
+- Culture-level interaction state for cell-cell contact and later adhesion.
+- Future cortex-particle collision using Warp spatial primitives such as hash grids.
 
 Sources:
 
@@ -159,7 +160,7 @@ Sources:
 | Build and run the prototype app | Omniverse Kit |
 | Author or inspect a scene interactively | USD Composer or the local Kit app |
 | Make boxes, spheres, props, and substrate collide | Omni Physics / PhysX |
-| Make a cell migrate with overdamped force balance | Custom simulation state first |
-| Accelerate explicit cell force updates | NVIDIA Warp |
+| Make cells migrate with overdamped force balance | Custom simulation state plus NVIDIA Warp |
+| Accelerate explicit cell force and contact updates | NVIDIA Warp |
 | Explore differentiable GPU physics later | Newton |
 | Keep imported assets simulation-ready | SimReady guidance |

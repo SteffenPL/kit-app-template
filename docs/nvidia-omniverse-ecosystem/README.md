@@ -1,6 +1,6 @@
 # NVIDIA Omniverse Ecosystem Notes
 
-Last checked: 2026-05-23
+Last checked: 2026-05-29
 
 This folder is a project-local orientation guide for the NVIDIA Omniverse, OpenUSD, physics, and GPU simulation ecosystem relevant to this cell-migration prototype.
 
@@ -19,8 +19,9 @@ The current prototype should stay small and inspectable:
 - Use the Kit app and extension structure already present in `source/apps/ku.demo.kit` and `source/extensions/ku.cell_sim/`.
 - Use PhysX/Omni Physics for visual and mechanical smoke tests where rigid contact is useful.
 - Keep the scientific cell-motion model overdamped rather than inertia-dominated.
-- Use Python arrays first when that keeps force logic readable.
-- Move force kernels to NVIDIA Warp once the model has stable state, force, and integration contracts.
+- Keep Python reference behavior available for readable tests.
+- Use the culture-level NVIDIA Warp backend for the default scientific simulation path.
+- Use Warp spatial primitives for future cortex-particle contact instead of custom broadphase code.
 - Treat Newton as a promising future path for GPU-accelerated, differentiable simulation, especially if the project grows toward robotics-style benchmark workloads.
 
 Related local context:
