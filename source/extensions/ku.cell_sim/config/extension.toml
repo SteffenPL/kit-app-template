@@ -1,0 +1,22 @@
+[package]
+title = "KU Cell Simulation"
+version = "0.1.0"
+description = "Overdamped soft-body cell migration prototype for Omniverse Kit."
+category = "Simulation"
+keywords = ["cell", "migration", "biophysics", "simulation", "soft body"]
+readme = "docs/README.md"
+
+[dependencies]
+"omni.usd" = {}
+"omni.kit.commands" = {}
+"omni.kit.viewport.utility" = {}
+"omni.timeline" = {}
+"omni.ui" = {}
+"omni.warp.core" = {}
+
+[[python.module]]
+name = "ku.cell_sim"
+
+[[test]]
+dependencies = []
+args = []

@@ -15,6 +15,21 @@ For stable, production-oriented development, please use the [Production Branch o
 
 Welcome to `kit-app-template`, a toolkit designed for developers interested in GPU-accelerated application development within the NVIDIA Omniverse ecosystem. This repository offers streamlined tools and templates to simplify creating high-performance, OpenUSD-based desktop or cloud streaming applications using the Omniverse Kit SDK.
 
+### Current Prototype in This Fork
+
+This checkout is being used as a biologically motivated cell-migration prototype. The active local extension is `ku.cell_sim` under `source/extensions/ku.cell_sim/`.
+
+Current project-specific state:
+
+- `source/apps/ku.demo.kit` launches the demo app.
+- The app creates a small culture of soft cells on a substrate.
+- The cortex/membrane visuals are semi-transparent, nuclei are visible, and a clip plane is present for inspection.
+- The simulation uses overdamped force balance rather than inertia-dominated rigid-body dynamics.
+- The default scientific backend is a culture-level NVIDIA Warp backend with a Python reference path for headless tests.
+- Omniverse Kit timeline playback is the source of truth for simulation start/stop.
+
+Project guidance lives in `AGENTS.md`. The extension-local overview is `source/extensions/ku.cell_sim/docs/README.md`.
+
 ### About Omniverse Kit SDK
 
 The Omniverse Kit SDK enables developers to build immersive 3D applications. Key features include:
