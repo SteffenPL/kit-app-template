@@ -3,21 +3,28 @@ from __future__ import annotations
 import omni.ext
 import omni.kit.app
 import omni.kit.commands
+import omni.ui as ui
 import omni.usd
 import carb.eventdispatcher
 
 from .scene import CAMERA_PATH, ROOT_PATH, CellScene
-from .simulation import SoftCellSimulation
+from .simulation import CellCultureSimulation
 
 
 class CellSimulationExtension(omni.ext.IExt):
     def on_startup(self, _ext_id):
-        self._simulation = SoftCellSimulation()
+        self._simulation = CellCultureSimulation()
         self._scene = None
         self._stage = None
+        self._window = None
+        self._animation_status = None
         self._update_subscription = None
-        self._frames_before_create = 12
+        self._frames_before_create = 2
         self._needs_viewport_focus = True
+        self._animate = False
+        self._step_accumulator = 0.0
+        self._step_interval = 1.0 / 12.0
+        self._build_window()
 
         self._update_subscription = carb.eventdispatcher.get_eventdispatcher().observe_event(
             order=omni.kit.app.UPDATE_ORDER_PYTHON_EXEC_END_UPDATE,
@@ -30,18 +37,49 @@ class CellSimulationExtension(omni.ext.IExt):
 
     def on_shutdown(self):
         self._update_subscription = None
+        self._window = None
+        self._animation_status = None
         self._scene = None
         self._stage = None
         self._simulation = None
         print("[ku.cell_sim] Soft cell simulation stopped")
 
-    def _ensure_scene(self) -> None:
+    def _build_window(self) -> None:
+        self._window = ui.Window("Cell Demo", width=220, height=156, visible=True)
+        with self._window.frame:
+            with ui.VStack(spacing=6):
+                ui.Label("Cell culture")
+                self._animation_status = ui.Label("Animation: paused")
+                ui.Button("Create Scene", height=28, clicked_fn=self._recreate_scene)
+                ui.Button("Reset Motion", height=28, clicked_fn=self._reset_motion)
+                with ui.HStack(spacing=6, height=28):
+                    ui.Button("Start", clicked_fn=self._start_animation)
+                    ui.Button("Stop", clicked_fn=self._stop_animation)
+
+    def _set_animation(self, animate: bool) -> None:
+        self._animate = animate
+        self._step_accumulator = 0.0
+        if self._animation_status is not None:
+            self._animation_status.text = "Animation: running" if animate else "Animation: paused"
+
+    def _start_animation(self) -> None:
+        self._set_animation(True)
+        print("[ku.cell_sim] Cell culture animation started")
+
+    def _stop_animation(self) -> None:
+        self._set_animation(False)
+        print("[ku.cell_sim] Cell culture animation paused")
+
+    def _get_or_create_stage(self):
         context = omni.usd.get_context()
         stage = context.get_stage()
         if stage is None:
             context.new_stage()
             stage = context.get_stage()
+        return stage
 
+    def _ensure_scene(self) -> None:
+        stage = self._get_or_create_stage()
         if stage is None:
             return
 
@@ -54,6 +92,30 @@ class CellSimulationExtension(omni.ext.IExt):
         self._stage = stage
         self._needs_viewport_focus = True
         print("[ku.cell_sim] Created soft cell scene at /World/CellMigrationPrototype")
+
+    def _recreate_scene(self) -> None:
+        stage = self._get_or_create_stage()
+        if stage is None:
+            return
+
+        self._simulation = CellCultureSimulation()
+        self._scene = CellScene(stage, self._simulation)
+        self._scene.create()
+        self._stage = stage
+        self._needs_viewport_focus = True
+        self._set_animation(False)
+        print("[ku.cell_sim] Recreated cell culture scene")
+
+    def _reset_motion(self) -> None:
+        if self._simulation is None:
+            return
+
+        self._simulation.reset()
+        if self._scene is not None:
+            self._scene.create()
+            self._needs_viewport_focus = True
+        self._set_animation(False)
+        print("[ku.cell_sim] Reset cell culture motion")
 
     def _focus_viewport(self) -> None:
         try:
@@ -91,6 +153,15 @@ class CellSimulationExtension(omni.ext.IExt):
         if self._needs_viewport_focus:
             self._focus_viewport()
 
+        if not self._animate:
+            return
+
         dt = event["dt"] if "dt" in event else 1.0 / 60.0
-        self._simulation.step(float(dt))
+        self._step_accumulator += min(float(dt), 0.1)
+        if self._step_accumulator < self._step_interval:
+            return
+
+        step_dt = self._step_accumulator
+        self._step_accumulator = 0.0
+        self._simulation.step(step_dt)
         self._scene.update()

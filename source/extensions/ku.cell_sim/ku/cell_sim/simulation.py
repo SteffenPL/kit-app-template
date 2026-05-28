@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import cos, pi, sin, sqrt
+from random import Random
 
 
 @dataclass(frozen=True)
@@ -62,8 +63,20 @@ class SoftCellParameters:
 class SoftCellSimulation:
     """Small overdamped cell-shell model used before moving kernels to Warp."""
 
-    def __init__(self, parameters: SoftCellParameters | None = None):
+    def __init__(
+        self,
+        parameters: SoftCellParameters | None = None,
+        origin: Vec3 | None = None,
+        migration_direction: Vec3 | None = None,
+        backend: str = "warp",
+    ):
         self.parameters = parameters or SoftCellParameters()
+        self.origin = origin or Vec3(0.0, 0.0, 0.0)
+        self.migration_direction = (migration_direction or Vec3(1.0, 0.0, 0.0)).normalized()
+        self.backend_mode = backend
+        self.backend_name = "python"
+        self.backend_error: str | None = None
+        self._backend = None
         self.positions: list[Vec3] = []
         self.rest_offsets: list[Vec3] = []
         self.springs: list[Spring] = []
@@ -79,9 +92,11 @@ class SoftCellSimulation:
 
     def reset(self) -> None:
         self.rest_offsets = self._build_sphere_offsets()
-        self.positions = [offset + Vec3(0.0, 0.0, self.parameters.radius) for offset in self.rest_offsets]
+        center = self.origin + Vec3(0.0, 0.0, self.parameters.radius)
+        self.positions = [offset + center for offset in self.rest_offsets]
         self.springs = self._build_springs()
         self.faces = self._build_faces()
+        self._configure_backend()
 
     def step(self, dt: float) -> None:
         remaining = max(0.0, dt)
@@ -91,6 +106,18 @@ class SoftCellSimulation:
             remaining -= sub_dt
 
     def _step_once(self, dt: float) -> None:
+        if self._backend is not None:
+            try:
+                self.positions = self._backend.step_once(dt)
+                return
+            except Exception as exc:
+                self._backend = None
+                self.backend_name = "python"
+                self.backend_error = str(exc)
+
+        self._step_once_python(dt)
+
+    def _step_once_python(self, dt: float) -> None:
         forces = [Vec3(0.0, 0.0, -self.parameters.gravity) for _ in self.positions]
         center = self.center
 
@@ -112,11 +139,45 @@ class SoftCellSimulation:
 
             # A tiny polarity cue makes the prototype visibly cell-like without
             # introducing an adhesion model yet.
-            if self.rest_offsets[index].x > self.parameters.radius * 0.35:
-                forces[index] += Vec3(self.parameters.migration_force, 0.0, 0.0)
+            polarity = (
+                self.rest_offsets[index].x * self.migration_direction.x
+                + self.rest_offsets[index].y * self.migration_direction.y
+                + self.rest_offsets[index].z * self.migration_direction.z
+            )
+            if polarity > self.parameters.radius * 0.35:
+                forces[index] += self.migration_direction * self.parameters.migration_force
 
         drag = max(self.parameters.drag, 1e-6)
         self.positions = [position + (force / drag) * dt for position, force in zip(self.positions, forces)]
+
+    def _configure_backend(self) -> None:
+        self._backend = None
+        self.backend_name = "python"
+        self.backend_error = None
+
+        if self.backend_mode == "python":
+            return
+
+        if self.backend_mode not in {"auto", "warp"}:
+            raise ValueError(f"Unknown simulation backend: {self.backend_mode}")
+
+        try:
+            from .warp_backend import WarpSoftCellBackend
+
+            self._backend = WarpSoftCellBackend(
+                positions=self.positions,
+                rest_offsets=self.rest_offsets,
+                springs=self.springs,
+                parameters=self.parameters,
+                migration_direction=self.migration_direction,
+            )
+            self.backend_name = self._backend.name
+        except Exception as exc:
+            self._backend = None
+            self.backend_name = "python"
+            self.backend_error = str(exc)
+            if self.backend_mode == "warp":
+                raise RuntimeError(f"Failed to initialize Warp simulation backend: {exc}") from exc
 
     def _build_sphere_offsets(self) -> list[Vec3]:
         params = self.parameters
@@ -174,3 +235,112 @@ class SoftCellSimulation:
 
         return faces
 
+
+@dataclass(frozen=True)
+class CellStyle:
+    cortex_color: tuple[float, float, float]
+    nucleus_color: tuple[float, float, float]
+
+
+@dataclass(frozen=True)
+class CellInstance:
+    name: str
+    simulation: SoftCellSimulation
+    style: CellStyle
+
+
+class CellCultureSimulation:
+    """Seeded multi-cell culture built from the single-cell scaffold."""
+
+    def __init__(self, count: int = 16, seed: int = 11, backend: str = "warp"):
+        self.count = min(max(count, 10), 20)
+        self.seed = seed
+        self.backend = backend
+        self.cells: list[CellInstance] = []
+        self.reset()
+
+    def reset(self) -> None:
+        self.cells = []
+        rng = Random(self.seed)
+        palette = [
+            CellStyle((0.08, 0.85, 0.76), (1.0, 0.18, 0.70)),
+            CellStyle((0.28, 0.95, 0.34), (0.76, 0.30, 1.0)),
+            CellStyle((0.12, 0.68, 1.0), (1.0, 0.35, 0.46)),
+            CellStyle((0.96, 0.82, 0.20), (0.42, 0.65, 1.0)),
+        ]
+
+        origins = self._random_origins(rng)
+
+        for index in range(self.count):
+            radius = rng.uniform(0.46, 0.55)
+            direction = Vec3(rng.uniform(0.65, 1.0), rng.uniform(-0.35, 0.35), 0.0).normalized()
+            params = SoftCellParameters(
+                radius=radius,
+                lat_segments=8,
+                lon_segments=16,
+                spring_stiffness=26.0,
+                shape_stiffness=12.0,
+                plane_stiffness=90.0,
+                drag=24.0,
+                gravity=1.1,
+                migration_force=0.22,
+            )
+            self.cells.append(
+                CellInstance(
+                    name=f"Cell_{index + 1:02d}",
+                    simulation=SoftCellSimulation(
+                        params,
+                        origin=origins[index],
+                        migration_direction=direction,
+                        backend=self.backend,
+                    ),
+                    style=palette[index % len(palette)],
+                )
+            )
+
+    def step(self, dt: float) -> None:
+        for cell in self.cells:
+            cell.simulation.step(dt)
+
+    def _random_origins(self, rng: Random) -> list[Vec3]:
+        origins: list[Vec3] = []
+        x_radius = 3.0
+        y_radius = 1.9
+        min_distance = 0.95
+        max_attempts = 2000
+
+        while len(origins) < self.count and max_attempts > 0:
+            max_attempts -= 1
+            x = rng.uniform(-x_radius, x_radius)
+            y = rng.uniform(-y_radius, y_radius)
+            if (x / x_radius) ** 2 + (y / y_radius) ** 2 > 1.0:
+                continue
+
+            candidate = Vec3(x, y, 0.0)
+            if all((candidate - origin).length() >= min_distance for origin in origins):
+                origins.append(candidate)
+
+        if len(origins) < self.count:
+            origins.extend(self._fallback_origins(rng, self.count - len(origins)))
+
+        return origins
+
+    def _fallback_origins(self, rng: Random, remaining: int) -> list[Vec3]:
+        columns = 5
+        spacing = 1.05
+        rows = (remaining + columns - 1) // columns
+        x_origin = -((columns - 1) * spacing) / 2.0
+        y_origin = -((rows - 1) * spacing) / 2.0
+
+        origins: list[Vec3] = []
+        for index in range(remaining):
+            row = index // columns
+            column = index % columns
+            origins.append(
+                Vec3(
+                    x_origin + column * spacing + rng.uniform(-0.12, 0.12),
+                    y_origin + row * spacing + rng.uniform(-0.12, 0.12),
+                    0.0,
+                )
+            )
+        return origins

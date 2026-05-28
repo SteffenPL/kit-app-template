@@ -10,6 +10,8 @@ readme = "docs/README.md"
 "omni.usd" = {}
 "omni.kit.commands" = {}
 "omni.kit.viewport.utility" = {}
+"omni.ui" = {}
+"omni.warp.core" = {}
 
 [[python.module]]
 name = "ku.cell_sim"
