@@ -3,6 +3,7 @@ from __future__ import annotations
 import omni.ext
 import omni.kit.app
 import omni.kit.commands
+import omni.timeline
 import omni.ui as ui
 import omni.usd
 import carb.eventdispatcher
@@ -18,10 +19,10 @@ class CellSimulationExtension(omni.ext.IExt):
         self._stage = None
         self._window = None
         self._animation_status = None
+        self._timeline = omni.timeline.get_timeline_interface()
         self._update_subscription = None
         self._frames_before_create = 2
         self._needs_viewport_focus = True
-        self._animate = False
         self._step_accumulator = 0.0
         self._step_interval = 1.0 / 12.0
         self._build_window()
@@ -39,6 +40,7 @@ class CellSimulationExtension(omni.ext.IExt):
         self._update_subscription = None
         self._window = None
         self._animation_status = None
+        self._timeline = None
         self._scene = None
         self._stage = None
         self._simulation = None
@@ -49,26 +51,33 @@ class CellSimulationExtension(omni.ext.IExt):
         with self._window.frame:
             with ui.VStack(spacing=6):
                 ui.Label("Cell culture")
-                self._animation_status = ui.Label("Animation: paused")
+                self._animation_status = ui.Label("Timeline: paused")
                 ui.Button("Create Scene", height=28, clicked_fn=self._recreate_scene)
                 ui.Button("Reset Motion", height=28, clicked_fn=self._reset_motion)
                 with ui.HStack(spacing=6, height=28):
                     ui.Button("Start", clicked_fn=self._start_animation)
                     ui.Button("Stop", clicked_fn=self._stop_animation)
 
-    def _set_animation(self, animate: bool) -> None:
-        self._animate = animate
-        self._step_accumulator = 0.0
+    def _is_timeline_playing(self) -> bool:
+        return bool(self._timeline is not None and self._timeline.is_playing())
+
+    def _sync_animation_status(self) -> None:
         if self._animation_status is not None:
-            self._animation_status.text = "Animation: running" if animate else "Animation: paused"
+            self._animation_status.text = "Timeline: playing" if self._is_timeline_playing() else "Timeline: paused"
 
     def _start_animation(self) -> None:
-        self._set_animation(True)
-        print("[ku.cell_sim] Cell culture animation started")
+        if self._timeline is not None:
+            self._timeline.play()
+        self._step_accumulator = 0.0
+        self._sync_animation_status()
+        print("[ku.cell_sim] Kit timeline started")
 
     def _stop_animation(self) -> None:
-        self._set_animation(False)
-        print("[ku.cell_sim] Cell culture animation paused")
+        if self._timeline is not None:
+            self._timeline.pause()
+        self._step_accumulator = 0.0
+        self._sync_animation_status()
+        print("[ku.cell_sim] Kit timeline paused")
 
     def _get_or_create_stage(self):
         context = omni.usd.get_context()
@@ -103,7 +112,7 @@ class CellSimulationExtension(omni.ext.IExt):
         self._scene.create()
         self._stage = stage
         self._needs_viewport_focus = True
-        self._set_animation(False)
+        self._stop_animation()
         print("[ku.cell_sim] Recreated cell culture scene")
 
     def _reset_motion(self) -> None:
@@ -114,7 +123,7 @@ class CellSimulationExtension(omni.ext.IExt):
         if self._scene is not None:
             self._scene.create()
             self._needs_viewport_focus = True
-        self._set_animation(False)
+        self._stop_animation()
         print("[ku.cell_sim] Reset cell culture motion")
 
     def _focus_viewport(self) -> None:
@@ -153,7 +162,8 @@ class CellSimulationExtension(omni.ext.IExt):
         if self._needs_viewport_focus:
             self._focus_viewport()
 
-        if not self._animate:
+        self._sync_animation_status()
+        if not self._is_timeline_playing():
             return
 
         dt = event["dt"] if "dt" in event else 1.0 / 60.0
