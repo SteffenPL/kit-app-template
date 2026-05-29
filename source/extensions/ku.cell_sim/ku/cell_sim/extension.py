@@ -8,6 +8,8 @@ import omni.ui as ui
 import omni.usd
 import carb.eventdispatcher
 
+from .authored_scene import AuthoredUsdScene, VESSEL_ROOT_PATH
+from .authoring import build_endothelium_vessel_scene
 from .scene import CAMERA_PATH, ROOT_PATH, CellScene
 from .simulation import CellCultureSimulation
 
@@ -47,12 +49,13 @@ class CellSimulationExtension(omni.ext.IExt):
         print("[ku.cell_sim] Soft cell simulation stopped")
 
     def _build_window(self) -> None:
-        self._window = ui.Window("Cell Demo", width=220, height=156, visible=True)
+        self._window = ui.Window("Cell Demo", width=260, height=190, visible=True)
         with self._window.frame:
             with ui.VStack(spacing=6):
                 ui.Label("Cell culture")
                 self._animation_status = ui.Label("Timeline: paused")
                 ui.Button("Create Scene", height=28, clicked_fn=self._recreate_scene)
+                ui.Button("Create Vessel", height=28, clicked_fn=self._create_vessel_scene)
                 ui.Button("Reset Motion", height=28, clicked_fn=self._reset_motion)
                 with ui.HStack(spacing=6, height=28):
                     ui.Button("Start", clicked_fn=self._start_animation)
@@ -114,6 +117,18 @@ class CellSimulationExtension(omni.ext.IExt):
         self._needs_viewport_focus = True
         self._stop_animation()
         print("[ku.cell_sim] Recreated cell culture scene")
+
+    def _create_vessel_scene(self) -> None:
+        stage = self._get_or_create_stage()
+        if stage is None:
+            return
+
+        spec = build_endothelium_vessel_scene(cell_count=200, cells_per_ring=10)
+        AuthoredUsdScene(stage, spec).create()
+        self._stage = stage
+        self._needs_viewport_focus = False
+        self._stop_animation()
+        print(f"[ku.cell_sim] Created authored endothelial vessel scene at {VESSEL_ROOT_PATH}")
 
     def _reset_motion(self) -> None:
         if self._simulation is None:
