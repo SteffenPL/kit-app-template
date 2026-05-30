@@ -39,3 +39,10 @@ deps/**/user.toml
 
 # claude code configs
 .claude/**
+CLAUDE.md
+
+# local Codex/browser screenshots
+.codex-screens/
+
+# Generated exports, renders, and local scene experiments.
+outputs/

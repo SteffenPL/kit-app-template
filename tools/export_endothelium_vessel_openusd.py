@@ -17,9 +17,9 @@ from ku.cell_sim.openusd_export import export_vessel_scene_openusd  # noqa: E402
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export a compact OpenUSD endothelial vessel scene using pxr.")
-    parser.add_argument("--output", default="outputs/endothelium_vessel_openusd/endothelium_vessel_200.usdc")
-    parser.add_argument("--cells", type=int, default=200)
-    parser.add_argument("--cells-per-ring", type=int, default=10)
+    parser.add_argument("--output", default="outputs/endothelium_vessel_openusd/endothelium_vessel_420.usdc")
+    parser.add_argument("--cells", type=int, default=420)
+    parser.add_argument("--cells-per-ring", type=int, default=14)
     args = parser.parse_args()
 
     spec = build_endothelium_vessel_scene(cell_count=args.cells, cells_per_ring=args.cells_per_ring)

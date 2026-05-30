@@ -49,8 +49,8 @@ DEFAULT_VESSEL_MATERIALS = (
 
 
 def build_endothelium_vessel_scene(
-    cell_count: int = 200,
-    cells_per_ring: int = 10,
+    cell_count: int = 420,
+    cells_per_ring: int = 14,
     radius: float = 2.0,
     length: float = 12.0,
 ) -> VesselSceneSpec:
@@ -69,9 +69,10 @@ def build_endothelium_vessel_scene(
     axis = Vec3(1.0, 0.0, 0.0)
     cells: list[EndothelialCellSpec] = []
     axial_spacing = length / max(rings, 1)
-    cell_length = axial_spacing * 0.74
-    cell_width = (2.0 * pi * radius / cells_per_ring) * 0.72
-    cell_thickness = 0.09
+    cell_scale_factor = 2.5
+    cell_length = min(axial_spacing * 0.78, 0.42) * cell_scale_factor
+    cell_width = min((2.0 * pi * radius / cells_per_ring) * 0.46, 0.46) * cell_scale_factor
+    cell_thickness = 0.22 * cell_scale_factor
 
     for index in range(cell_count):
         ring = index // cells_per_ring
@@ -94,7 +95,7 @@ def build_endothelium_vessel_scene(
                 radial_axis=radial,
                 cell_scale=Vec3(cell_length, cell_width, cell_thickness),
                 nucleus_center=nucleus_center,
-                nucleus_scale=Vec3(cell_length * 0.28, cell_width * 0.24, cell_thickness * 0.62),
+                nucleus_scale=Vec3(cell_length * 0.42, cell_width * 0.36, cell_thickness * 0.76),
                 cortex_material=cortex_material,
                 nucleus_material="endothelial_nucleus",
             )

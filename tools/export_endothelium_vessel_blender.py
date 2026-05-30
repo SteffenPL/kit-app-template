@@ -22,10 +22,10 @@ def _parse_args() -> argparse.Namespace:
     argv = sys.argv
     script_args = argv[argv.index("--") + 1 :] if "--" in argv else []
     parser = argparse.ArgumentParser(description="Export a Blender-authored endothelial vessel OpenUSD scene.")
-    parser.add_argument("--output", default="outputs/endothelium_vessel_blender/endothelium_vessel_200.usda")
-    parser.add_argument("--blend-output", default="outputs/endothelium_vessel_blender/endothelium_vessel_200.blend")
-    parser.add_argument("--cells", type=int, default=200)
-    parser.add_argument("--cells-per-ring", type=int, default=10)
+    parser.add_argument("--output", default="outputs/endothelium_vessel_blender/endothelium_vessel_420.usda")
+    parser.add_argument("--blend-output", default="outputs/endothelium_vessel_blender/endothelium_vessel_420.blend")
+    parser.add_argument("--cells", type=int, default=420)
+    parser.add_argument("--cells-per-ring", type=int, default=14)
     return parser.parse_args(script_args)
 
 

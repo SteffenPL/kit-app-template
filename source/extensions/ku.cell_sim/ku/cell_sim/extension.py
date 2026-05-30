@@ -123,7 +123,7 @@ class CellSimulationExtension(omni.ext.IExt):
         if stage is None:
             return
 
-        spec = build_endothelium_vessel_scene(cell_count=200, cells_per_ring=10)
+        spec = build_endothelium_vessel_scene()
         AuthoredUsdScene(stage, spec).create()
         self._stage = stage
         self._needs_viewport_focus = False
